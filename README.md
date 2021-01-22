@@ -1,2 +1,1 @@
-# work-in-progress
-some work-in-progress scripts to parse expression data
+A set of wrappers to parse microarray and RNA-seq data
