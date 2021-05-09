@@ -1,0 +1,11 @@
+n_cores: 6
+sample_file: data/raw/metaSRR.txt
+GSM_file: data/raw/metaGSM.txt
+head_read_quality: 25
+tail_read_quality: 25
+sliding_window_size: 4
+sliding_window_quality: 25
+drop_read_below_size: 20
+bases_to_crop_from_tail: 25
+end_to_end_hits: 2
+num_of_good_alignments: 1

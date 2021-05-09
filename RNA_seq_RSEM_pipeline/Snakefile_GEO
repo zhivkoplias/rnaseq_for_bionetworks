@@ -1,0 +1,169 @@
+from snakemake.utils import min_version
+min_version("5.3.0")
+import pandas as pd
+from os.path import join, basename, dirname
+
+configfile: "config.yml"
+sample_file = config["sample_file"]
+GSM_file = config["GSM_file"]
+units_table = pd.read_table(sample_file, header=None, sep=' ')
+units_table.columns=['SRR_num','sample']
+samples= list(units_table['sample'])
+
+rule all:
+    input:
+        expand("results/counts/{sample}.isoforms.results", sample=samples),
+        expand("results/counts/{sample}.genes.results", sample=samples),
+        expand("data/processed/{sample}.fastq.gz", sample=samples),
+        expand("data/processed/{sample}.trimmed.fastq.gz", sample=samples),
+        expand("results/reports/fastqc/{sample}_fastqc.html", sample=samples),
+        expand("results/reports/fastqc/{sample}_fastqc.zip", sample=samples)
+
+rule get_SRA_by_accession:
+    """
+    Retrieve a single-read FASTQ file from SRA (Sequence Read Archive) by run accession number.
+    """
+    output:
+        "data/processed/{sample,\w+}.fastq.gz"
+    params:
+        cores=config["n_cores"]
+    log:
+        "logs/fastq_dump/{sample}.log"
+    conda: "envs/reqs_salmon.yml"
+    priority: 60
+    shell:
+        """
+        prefetch {wildcards.sample} -O tmp/ && fastq-dump {wildcards.sample} --readids \
+            --gzip -O "data/processed/" > {log}
+        echo 'FASTQ files are ready'
+        """
+
+rule fastqc:
+    """
+    Run FastQC on a FASTQ file.
+    """
+    input:
+        "data/processed/{sample}.fastq.gz"
+    priority: 50
+    output:
+        "results/reports/fastqc/{sample}_fastqc.html",
+        "results/reports/fastqc/{sample}_fastqc.zip"
+    conda: "envs/reqs_salmon.yml"
+    shell:
+        """
+        # Run fastQC and save the output to the current directory
+        fastqc {input} -q -o .
+        # Move the files which are used in the workflow
+        mv {wildcards.sample}_fastqc.html {output[0]}
+        mv {wildcards.sample}_fastqc.zip {output[1]}
+        """
+
+rule trim_reads:
+    """
+    Run Trimmomatic on a FASTQ file to trim Poly-tails.
+    """
+    input:
+        "data/processed/{sample}.fastq.gz"
+    output:
+        "data/processed/{sample,\w+}.trimmed.fastq.gz"
+    priority: 40
+    log:
+        "logs/trimmomatic/{sample}.log"
+    conda:
+        "envs/reqs_salmon.yml"
+    params:
+        cores=config["n_cores"],
+        leading_quality=config["head_read_quality"],
+        trailing_quality=config["tail_read_quality"],
+        window_size=config["sliding_window_size"],
+        window_quality=config["sliding_window_quality"],
+        size_threshold=config["drop_read_below_size"],
+        n_bases_tailcrop=config["bases_to_crop_from_tail"]
+
+    shell:
+        """
+        # Run Trimmomatic and save the output to the current directory
+        trimmomatic SE -threads {params.cores} {input} {output} LEADING:{params.leading_quality} TRAILING:{params.trailing_quality} SLIDINGWINDOW:{params.window_size}:{params.window_quality} MINLEN:{params.size_threshold} CROP:{params.n_bases_tailcrop} &>> {log}
+        #rm {input}
+        """
+
+rule align_to_genome:
+    """
+    Align a fastq file to a genome index using Bowtie 2.
+    """
+    input:
+        "data/processed/{sample}.trimmed.fastq.gz",
+        "data/reference/MG1655_transcripts_bowtie.1.ebwt",
+        "data/reference/MG1655_transcripts_bowtie.2.ebwt",
+        "data/reference/MG1655_transcripts_bowtie.3.ebwt",
+        "data/reference/MG1655_transcripts_bowtie.4.ebwt",
+        "data/reference/MG1655_transcripts_bowtie.rev.1.ebwt",
+        "data/reference/MG1655_transcripts_bowtie.rev.2.ebwt"
+    output:
+        "data/processed/{sample,\w+}.bam"
+    log:
+        "logs/bowtie/{sample}.log"
+    priority: 30
+    conda:
+        "envs/reqs_salmon.yml"
+    params:
+        cores=config["n_cores"],
+        hits_to_report=config["end_to_end_hits"],
+	alignments_per_read=config["num_of_good_alignments"]
+    shell:
+        """
+        bowtie -p {params.cores} --best --sam data/reference/MG1655_transcripts_bowtie -v {params.hits_to_report} -k {params.alignments_per_read} --best {input[0]} 2> {log} | samtools view -bS - | samtools sort -o {output}
+        #mv {input[0]} tmp/
+        """
+
+rule calculate_expression:
+    """
+    Calculate transcript counts per gene using RSEM.
+    """
+    input:
+        "data/processed/{sample}.bam",
+        "data/reference/RSEM_MG1655_transcripts_reference.1.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.2.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.3.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.4.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.rev.1.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.rev.2.ebwt",
+        "data/reference/RSEM_MG1655_transcripts_reference.grp",
+        "data/reference/RSEM_MG1655_transcripts_reference.idx.fa",
+        "data/reference/RSEM_MG1655_transcripts_reference.seq",
+        "data/reference/RSEM_MG1655_transcripts_reference.ti",
+        "data/reference/RSEM_MG1655_transcripts_reference.transcripts.fa"
+    output:
+        "results/counts/{sample}.genes.results",
+        "results/counts/{sample}.isoforms.results"
+    log:
+        "logs/rsem/{sample}.log"
+    priority: 20
+    conda:
+        "envs/reqs_salmon.yml"
+    params:
+        cores=config["n_cores"]
+    shell:
+        """
+        #Run RSEM and save the output
+        rsem-calculate-expression -p {params.cores} --alignments {input[0]} data/reference/RSEM_MG1655_transcripts_reference results/counts/{wildcards.sample} > {log}
+        #mv {input[0]} tmp/
+        """
+
+rule merge_counts:
+    """
+    Merge RSEM counts and convert it to GeneSPIDER matrix format (logFC values)
+    """
+    output:
+         directory("results/matrices/")
+    input:
+         "results/counts/",
+         GSM_file,
+         sample_file
+    log:
+         "logs/merging_rsem_counts.txt"
+    priority: 1
+    shell:
+         """
+         python3 src/parse_rsem_Parker2019.py -l Parker -r {input[0]} -m1 {input[1]} -m2 {input[2]} -o {output} > {log}
+         """
