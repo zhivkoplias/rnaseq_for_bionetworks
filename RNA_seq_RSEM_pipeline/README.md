@@ -8,20 +8,7 @@ May 08, 2021
 
 ## Introduction
 
-This repo provides a set of scripts to ensure reproducibility of the results available here
-(<https://www.diva-portal.org/smash/get/diva2:1469953/FULLTEXT01.pdf>).
-In this study, we aimed to compare the performance of different methods
-to estimate selection coefficient across parameter space.
-
-We compared the performance of four tools:
-
- - WFABC 1.1. (<http://jjensenlab.org/wp-content/uploads/2016/02/WFABC_v1.1.zip>)
- - CLEAR (<https://github.com/airanmehr/clear>)
- - LLS (<https://github.com/ThomasTaus/poolSeq/>)
- - slattice (<https://github.com/mathii/slattice>)
- 
-Other methods/tools could be added to the comparison set later.
-
+TBD
 
 ## Snakemake pipeline execution
 
