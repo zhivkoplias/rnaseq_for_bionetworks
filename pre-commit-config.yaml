@@ -1,0 +1,21 @@
+repos:
+    # check that the syntax of this file is correct (hooks might not work otherwise)
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v2.3.0
+      hooks:
+        -   id: check-yaml
+    # enforce a strickt pep8 syntax and change any files not in this format
+    # note that any file that should not be pep8 can be specified in the pyproject.toml file in this directory
+    - repo: https://github.com/psf/black
+      rev: 19.10b0
+      hooks:
+        - id: black
+    # run a number of smaller fixing functions that does what they are named for
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v2.3.0
+      hooks:
+        -   id: end-of-file-fixer # makes sure all files ends with a newline
+        -   id: trailing-whitespace # removes any white space after the last non-whitespace in a line
+        -   id: check-merge-conflict # check for git merge symbols such as >>>>>>
+        -   id: mixed-line-ending # finds and fixes if different end of line symbols are used
+            args: [--fix=lf]

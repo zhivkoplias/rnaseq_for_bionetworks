@@ -16,22 +16,11 @@ class PandasGCTXParserL1000:
         """import libraries
         """
         
-        import numpy as np
-        import cmapPy.pandasGEXpress.GCToo as GCToo
-        from cmapPy.pandasGEXpress.parse import parse
-        import cmapPy.pandasGEXpress.write_gctx as wg
-        import cmapPy.pandasGEXpress.subset_gctoo as sg
-        import cmapPy.pandasGEXpress.concat as cg 
         print('loaded')
-        return None
+        return
 
     def read_gctx_data(self, cell_line,\
-    L1000_gctx_file =\
-        "/scratch/erikzhi/L1000/L1000_data/LIMS/GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx",\
-            gene_info_file =\
-                "/scratch/erikzhi/L1000/L1000_data/LIMS/GSE92742_Broad_LINCS_gene_info.txt",\
-                    inst_info_file = \
-                        "/scratch/erikzhi/L1000/L1000_data/LIMS/GSE92742_Broad_LINCS_inst_info.txt"):
+                       L1000_gctx_file, gene_info_file, inst_info_file, level):
         """
     
         Parameters
@@ -62,7 +51,11 @@ class PandasGCTXParserL1000:
         gene_info = pd.read_csv\
             (gene_info_file,\
              sep="\t", dtype=str)
-                
+        #ids
+        if level==5:
+            gctx_ids = 'sig_id'
+        else:
+            gctx_ids = 'inst_id'
         #lm genes
         landmark_gene = gene_info[gene_info["pr_is_lm"] == "1"]  
         landmark_gene_row_ids = landmark_gene["pr_gene_id"]
@@ -76,7 +69,7 @@ class PandasGCTXParserL1000:
                             (inst_info["pert_iname"].isin(landmark_gene_names))]
                
         
-        trt_sh_ids = inst_info["inst_id"][(inst_info["pert_type"] == "trt_sh") &\
+        trt_sh_ids = inst_info[gctx_ids][(inst_info["pert_type"] == "trt_sh") &\
                                            (inst_info["pert_time"] == "96") &\
                                            (inst_info["cell_id"] == cell_line) &\
                             (inst_info["pert_iname"].isin(landmark_gene_names))]
@@ -87,7 +80,7 @@ class PandasGCTXParserL1000:
                                                   (inst_info['pert_iname'] == "EMPTY_VECTOR") &\
                                                       (inst_info["pert_time"] == "96") &\
                                                   (inst_info["cell_id"] == cell_line)]
-        ctrl_ids = inst_info["inst_id"][(inst_info["pert_type"] == "ctl_vector") &\
+        ctrl_ids = inst_info[gctx_ids][(inst_info["pert_type"] == "ctl_vector") &\
                                                   (inst_info['pert_iname'] == "EMPTY_VECTOR") &\
                                                       (inst_info["pert_time"] == "96") &\
                                                   (inst_info["cell_id"] == cell_line)]
@@ -105,8 +98,8 @@ class PandasGCTXParserL1000:
                         
                 
         #annotate instances
-        trt_sh.set_index("inst_id", inplace=True) 
-        ctrl.set_index("inst_id", inplace=True)
+        trt_sh.set_index(gctx_ids, inplace=True) 
+        ctrl.set_index(gctx_ids, inplace=True)
         landmark_gene.set_index("pr_gene_id", inplace=True)
         
         level3_data_experiments.col_metadata_df = trt_sh
@@ -814,4 +807,25 @@ class PandasGCTXParserL1000:
         FC_dataset = FC_dataset.apply(np.log2)
     
         return FC_dataset
+    
+    def filter_overlapping_experiments(self, rep_matrix, common_labels):
+        """
+        filter out genes-esperiments pairs that are not present in all three reps
+        """
+        all_experiments = rep_matrix.columns.values.tolist()
+        experiment_labels = [experiment.split('_',1)[0] for experiment in all_experiments]
+        experiments_dictionary = dict(zip(all_experiments, experiment_labels))
+        
+        for key, value in experiments_dictionary.items():
+            if value not in common_labels:
+                del experiments_dictionary[key]
+        
+        rep_matrix =\
+        rep_matrix[rep_matrix.\
+                            columns.intersection(list(experiments_dictionary.keys()))]
+        rep_matrix =\
+        rep_matrix[rep_matrix.index.\
+                                isin(list(experiments_dictionary.values()))]
+        
+        return rep_matrix
         
