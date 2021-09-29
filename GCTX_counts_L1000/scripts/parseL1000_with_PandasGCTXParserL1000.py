@@ -44,6 +44,7 @@ for cell_line in list_of_cell_lines:
 list_of_cell_lines = ['HA1E', 'HCC515', 'HEPG2',\
                       'HT29', 'A549', 'MCF7','PC3', 'A375']
 
+shRNA_num = 2
 for cell_line in list_of_cell_lines:
     print(cell_line)
     #read data
@@ -64,20 +65,21 @@ for cell_line in list_of_cell_lines:
     #compute average across different shRNAs // comment out if not needed
     exp_data_lvl3_subset_bulk_rep1, exp_data_lvl3_subset_bulk_rep2,\
         exp_data_lvl3_subset_bulk_rep3 = \
-        gparser.merge_all_perturbators(exp_data_lvl3_subset, ["X1","X2","X3"])
-    exp_data_lvl3_subset_bulk_rep1 = exp_data_lvl3_subset_bestshRNA_rep1
-    exp_data_lvl3_subset_bulk_rep2 = exp_data_lvl3_subset_bestshRNA_rep2
-    exp_data_lvl3_subset_bulk_rep3 = exp_data_lvl3_subset_bestshRNA_rep3
+        gparser.merge_all_perturbators(exp_data_lvl3_subset, ["X1","X2","X3"], shRNA_num)
+    
+    #exp_data_lvl3_subset_bulk_rep1 = exp_data_lvl3_subset_bestshRNA_rep1
+    #exp_data_lvl3_subset_bulk_rep2 = exp_data_lvl3_subset_bestshRNA_rep2
+    #exp_data_lvl3_subset_bulk_rep3 = exp_data_lvl3_subset_bestshRNA_rep3
     
     
     #prepare replicates // 
     #rep_counts is the threshold for the lowest number of shRNA per gene per experiment
     exp_data_lvl3_subset_bulk_rep1_matrix =\
-        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep1, rep_counts=1)
+        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep1)
     exp_data_lvl3_subset_bulk_rep2_matrix =\
-        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep1, rep_counts=1)
+        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep2)
     exp_data_lvl3_subset_bulk_rep3_matrix =\
-        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep1, rep_counts=1)
+        gparser.gctoo2matrices_lvl5(exp_data_lvl3_subset_bulk_rep3)
     
     #genes that are the same betwen experiments
     common_genes = np.intersect1d(np.intersect1d(\
@@ -121,7 +123,7 @@ for cell_line in list_of_cell_lines:
                           exp_data_lvl3_subset_bulk_rep2_matrix_FC,\
                           exp_data_lvl3_subset_bulk_rep3_matrix_FC], axis=1)
     test_all.to_csv\
-            (output_dir+cell_line+'_lvl3_y_s.csv',\
+            (output_dir+cell_line+'_lvl3_y.csv',\
              index=True, header=True, sep = '\t')
 
 

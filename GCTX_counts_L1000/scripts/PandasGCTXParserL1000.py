@@ -180,7 +180,7 @@ class PandasGCTXParserL1000:
         return gctoo_instance_subset
     
     
-    def merge_tech_duplicates(self, gctoo_instance, column_name):
+    def merge_tech_duplicates(self, gctoo_instance, column_name, min_shRNAs_num=1):
         """
         
 
@@ -211,7 +211,7 @@ class PandasGCTXParserL1000:
                     ([column_name]).size().loc[lambda x: x == 1].index        
         mask_pert_ids_dup = \
                 gctoo_instance.col_metadata_df.groupby\
-                ([column_name]).size().loc[lambda x: x > 1].index
+                ([column_name]).size().loc[lambda x: x > min_shRNAs_num].index
                 
         #subset without duplicates
         data_rep1_nondup_ids = col_meta_data.index\
@@ -257,13 +257,14 @@ class PandasGCTXParserL1000:
             
             #add to the list
             new_gctoo_instances.append(merged_pert_dup_gctoo)
-        new_gctoo_instances.append(data_rep1_nondup)
+        if min_shRNAs_num == 1:
+            new_gctoo_instances.append(data_rep1_nondup)
         
         data_rep_cleaned = cg.hstack(new_gctoo_instances)
             
         return data_rep_cleaned
     
-    def merge_all_perturbators(self, gctoo_instance, list_of_plates):
+    def merge_all_perturbators(self, gctoo_instance, list_of_plates, min_shRNAs_num):
         """Merging shRNA experiments (with the same pert_iname)
             Input: gctoo_instance
             Returns
@@ -295,9 +296,9 @@ class PandasGCTXParserL1000:
         data_rep3 = sg.subset_gctoo\
                 (gctoo_instance, cid=list(rep3_ids))
         
-        data_rep1_all = self.merge_tech_duplicates(data_rep1, "pert_iname")
-        data_rep2_all = self.merge_tech_duplicates(data_rep2, "pert_iname")
-        data_rep3_all = self.merge_tech_duplicates(data_rep3, "pert_iname")
+        data_rep1_all = self.merge_tech_duplicates(data_rep1, "pert_iname", min_shRNAs_num)
+        data_rep2_all = self.merge_tech_duplicates(data_rep2, "pert_iname", min_shRNAs_num)
+        data_rep3_all = self.merge_tech_duplicates(data_rep3, "pert_iname", min_shRNAs_num)
         
         return data_rep1_all, data_rep2_all, data_rep3_all
     
@@ -697,7 +698,7 @@ class PandasGCTXParserL1000:
         return True
     
     
-    def gctoo2matrices_lvl5(self, gctoo_instance_lvl5, rep_counts=3):
+    def gctoo2matrices_lvl5(self, gctoo_instance_lvl5, rep_counts=1):
         """
         
         function to convert pre-processed experimental data (level 5) to matrices
@@ -816,7 +817,7 @@ class PandasGCTXParserL1000:
         experiment_labels = [experiment.split('_',1)[0] for experiment in all_experiments]
         experiments_dictionary = dict(zip(all_experiments, experiment_labels))
         
-        for key, value in experiments_dictionary.items():
+        for key, value in experiments_dictionary.copy().items():
             if value not in common_labels:
                 del experiments_dictionary[key]
         
