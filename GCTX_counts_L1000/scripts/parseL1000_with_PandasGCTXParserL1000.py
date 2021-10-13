@@ -122,8 +122,14 @@ for cell_line in list_of_cell_lines:
     test_all = pd.concat([exp_data_lvl3_subset_bulk_rep1_matrix_FC,\
                           exp_data_lvl3_subset_bulk_rep2_matrix_FC,\
                           exp_data_lvl3_subset_bulk_rep3_matrix_FC], axis=1)
+    
+    #save experimental data
+    #test_all = pd.concat([exp_data_lvl3_subset_bulk_rep1_matrix,\
+    #                      exp_data_lvl3_subset_bulk_rep2_matrix,\
+    #                      exp_data_lvl3_subset_bulk_rep3_matrix], axis=1)
+    
     test_all.to_csv\
-            (output_dir+cell_line+'_lvl3_y.csv',\
+            (output_dir+cell_line+'_lvl3_exp.csv',\
              index=True, header=True, sep = '\t')
 
 
