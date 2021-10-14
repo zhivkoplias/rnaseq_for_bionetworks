@@ -20,7 +20,7 @@ class PandasGCTXParserL1000:
         return
 
     def read_gctx_data(self, cell_line,\
-                       L1000_gctx_file, gene_info_file, inst_info_file, level):
+                       L1000_gctx_file, gene_info_file, inst_info_file, level, hrs="96"):
         """
     
         Parameters
@@ -64,13 +64,13 @@ class PandasGCTXParserL1000:
         #parse meta info
         #experiments
         trt_sh = inst_info[(inst_info["pert_type"] == "trt_sh") &\
-                           (inst_info["pert_time"] == "96") &\
+                           (inst_info["pert_time"] == hrs) &\
                            (inst_info["cell_id"] == cell_line) &\
                             (inst_info["pert_iname"].isin(landmark_gene_names))]
                
         
         trt_sh_ids = inst_info[gctx_ids][(inst_info["pert_type"] == "trt_sh") &\
-                                           (inst_info["pert_time"] == "96") &\
+                                           (inst_info["pert_time"] == hrs) &\
                                            (inst_info["cell_id"] == cell_line) &\
                             (inst_info["pert_iname"].isin(landmark_gene_names))]
         
@@ -78,11 +78,11 @@ class PandasGCTXParserL1000:
         #ctrl
         ctrl = inst_info[(inst_info["pert_type"] == "ctl_vector") &\
                                                   (inst_info['pert_iname'] == "EMPTY_VECTOR") &\
-                                                      (inst_info["pert_time"] == "96") &\
+                                                      (inst_info["pert_time"] == hrs) &\
                                                   (inst_info["cell_id"] == cell_line)]
         ctrl_ids = inst_info[gctx_ids][(inst_info["pert_type"] == "ctl_vector") &\
                                                   (inst_info['pert_iname'] == "EMPTY_VECTOR") &\
-                                                      (inst_info["pert_time"] == "96") &\
+                                                      (inst_info["pert_time"] == hrs) &\
                                                   (inst_info["cell_id"] == cell_line)]
         #print(ctrl_ids)
         

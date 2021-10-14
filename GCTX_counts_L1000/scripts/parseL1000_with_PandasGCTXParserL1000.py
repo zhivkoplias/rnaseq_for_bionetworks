@@ -43,16 +43,17 @@ for cell_line in list_of_cell_lines:
 #parse level3 data
 list_of_cell_lines = ['HA1E', 'HCC515', 'HEPG2',\
                       'HT29', 'A549', 'MCF7','PC3', 'A375']
-
 shRNA_num = 2
+time_point = "96"
 for cell_line in list_of_cell_lines:
     print(cell_line)
     #read data
     exp_data_lvl3, ctrl_data_lvl3 = gparser.read_gctx_data(cell_line,\
     L1000_gctx_file =os.path.join(data_dir,\
                     'GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx'),\
-    inst_info_file = os.path.join(data_dir, 'GSE92742_Broad_LINCS_inst_info.txt'),
-    gene_info_file = os.path.join(data_dir, 'GSE92742_Broad_LINCS_gene_info.txt'), level=3)
+    inst_info_file = os.path.join(data_dir, 'GSE92742_Broad_LINCS_inst_info.txt'),\
+    gene_info_file = os.path.join(data_dir, 'GSE92742_Broad_LINCS_gene_info.txt'),\
+    level=3, hrs=time_point)
     
     #subset
     exp_data_lvl3_subset = gparser.filter_gctx_data(exp_data_lvl3, ["X1","X2","X3"], 3)
@@ -129,7 +130,7 @@ for cell_line in list_of_cell_lines:
     #                      exp_data_lvl3_subset_bulk_rep3_matrix], axis=1)
     
     test_all.to_csv\
-            (output_dir+cell_line+'_lvl3_exp.csv',\
+            (output_dir+cell_line+'_'+time_point+'_lvl3.csv',\
              index=True, header=True, sep = '\t')
 
 
