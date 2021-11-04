@@ -1,1 +1,1 @@
-A set of wrappers to parse microarray and RNA-seq data
+A set of wrappers to parse GCTX data with cmapPy library

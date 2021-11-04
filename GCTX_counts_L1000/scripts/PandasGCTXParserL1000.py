@@ -6,6 +6,7 @@ class PandasGCTXParserL1000:
     A set of wrappers to parse L1000 data with pandasGEXpress package/
     https://clue.io/cmapPy/pandasGEXpress.html
     /
+    LINCS user guide: https://docs.google.com/document/d/1q2gciWRhVCAAnlvF2iRLuJ7whrGP6QjpsCMq1yWz7dU/
     Created on Tue Dec  1 11:37:19 2020
 
     @author: Erik Zhivkoplias
