@@ -3,6 +3,8 @@ min_version("5.3.0")
 import pandas as pd
 from os.path import join, basename, dirname
 
+#add exception if meta file doesn't exist then run rule that generates it 
+
 configfile: "config.yml"
 sample_file = config["sample_file"]
 GSM_file = config["GSM_file"]
