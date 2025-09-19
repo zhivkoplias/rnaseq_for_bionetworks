@@ -1,0 +1,200 @@
+---
+title: 'Parse Salmon output (TPM counts)'
+date: "10/02/2020"
+output: html_document
+---
+
+### Load libraries and data
+
+```{r pressure, echo=FALSE, message=FALSE, results=FALSE}
+require(stringr)
+require(GenomicFeatures)
+require(tximport)
+require(mygene)
+
+ctrl_files2exp <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_controls_files2experiments.csv", header = FALSE, sep=',')
+pert_files2exp <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_perturbations_files2experiments.csv", header = FALSE, sep=',')
+ctrl_meta <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_controls_meta.tsv", skip = 1, header = TRUE, sep='\t')
+pert_meta <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_perturbations_meta.tsv", skip=1, header = TRUE, sep='\t')
+txdb_from_gff <-makeTxDbFromGFF("/scratch/erikzhi/ENCODE_data/ref/gencode.v36.annotation.gtf")
+keys_txdb_from_gff <- keys(txdb_from_gff, keytype = "TXNAME")
+gencode_v36 <- select(txdb_from_gff, keys_txdb_from_gff, "GENEID", "TXNAME")
+
+```
+
+### Handle meta info
+
+```{r pressure, echo=FALSE, message=FALSE, results=FALSE}
+require(dplyr)
+#handle ctrl_files2exp
+colnames(ctrl_files2exp) <- c('ctrl_sample_num','ctrl_file_id','ctrl_exp_id','ctrl_replicate_num')
+ctrl_files2exp <- ctrl_files2exp %>% select(ctrl_file_id, ctrl_exp_id)
+
+#handle pert_files2exp
+colnames(pert_files2exp) <- c('pert_sample_num','pert_file_id','pert_exp_id','pert_replicate_num')
+pert_files2exp$pert_rep_num <- str_split_fixed(pert_files2exp$pert_replicate_num, "_", 2)[,1]
+pert_files2exp <- pert_files2exp %>% select(pert_file_id, pert_exp_id, pert_rep_num)
+
+#handle meta info
+pert_meta$ctrl_exp_id <- str_split_fixed(pert_meta$Controls, "/", 4)[,3]
+pert_meta$ID <- pert_meta$Files <- pert_meta$Biosample.accession <- pert_meta$Technical.replicate <- pert_meta$Controls <- NULL
+
+#relate pert files to ctrl files
+final_meta_table <- merge(x = pert_meta, y = ctrl_files2exp, by = "ctrl_exp_id", all = TRUE)
+final_meta_table$pert_exp_id <- final_meta_table$Accession
+final_meta_table$Accession <- NULL
+final_meta_table <- merge(x = final_meta_table, y = pert_files2exp, by = "pert_exp_id", all = TRUE)
+target_ctrl_files <- paste0(final_meta_table$ctrl_file_id, '.bam')
+target_pert_files <- paste0(final_meta_table$pert_file_id, '.bam')
+
+#store target genes
+target_genes <- final_meta_table$Target.gene.symbol
+```
+
+### Merge TPM counts (Salmon output)
+
+```{r pressure, echo=FALSE}
+
+handle_tpm_salmon_output <- function(path_to_salmon_output, files, gene_labels, txdb_subset) {
+  
+  #handle file names
+  salmon_files <- file.path(path_to_salmon_output,unique(files), "quant.sf")
+  names(salmon_files) <- unique(files)
+  
+  #read salmon output
+  salmon_table <- tximport(salmon_files, type = "salmon", tx2gene = txdb_subset, ignoreAfterBar=TRUE, dropInfReps=TRUE, abundanceCol = "TPM")
+  new_rownames <- str_split_fixed(rownames(salmon_table$abundance), "\\.", 2)[,1]
+  rownames(salmon_table$abundance) <- new_rownames
+  salmon_table <- as.data.frame(salmon_table$abundance)
+  salmon_table$query <- rownames(salmon_table)
+  
+  #get gene labels
+  salmon_gene_names <- as.data.frame(getGenes(new_rownames, fields='symbol'))
+  
+  #merge transcripts by gene labels and subset for target genes
+  tpm_transcript_table <- merge(x = salmon_table, y = salmon_gene_names, by = "query", all.y = TRUE)
+  tpm_transcript_table$query <- tpm_transcript_table$X_id <- tpm_transcript_table$X_version <- tpm_transcript_table$notfound <- NULL
+  tpm_gene_table <- aggregate(. ~ symbol, data=tpm_transcript_table, FUN=sum)
+  tpm_gene_table <- tpm_gene_table[tpm_gene_table$symbol %in% gene_labels, ]
+  names(tpm_gene_table) <- gsub(".bam", "", names(tpm_gene_table), fixed = TRUE)
+  
+  return(tpm_gene_table)
+}
+
+```
+
+### Run function
+
+```{r pressure, echo=FALSE, message=FALSE, results=FALSE}
+setwd("/scratch/erikzhi/ENCODE_data_HepG2")
+
+#aggregate TPMs from different experiments into one table
+final_table_tpm_ctrls <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/controls', unique(target_ctrl_files), target_genes, gencode_v36)
+final_table_tpm_perts <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/experiments', unique(target_pert_files), target_genes, gencode_v36)
+
+
+```
+
+### Calculate FC and aggregate by gene label
+
+```{r pressure}
+#calculate log2FC
+empty_vector <- vector()
+vector_names <- vector()
+
+#for every control sample
+for (ctrl_exp in unique(final_meta_table$ctrl_exp_id))
+{
+  #subset meta table
+  subset_meta = final_meta_table[final_meta_table$ctrl_exp_id==ctrl_exp,]
+  files_to_aggregate <- unique(subset_meta$ctrl_file_id)
+  
+  ctrl_tpm <- final_table_tpm_ctrls[,as.vector(files_to_aggregate)]
+  ctrl_tpm <- rowMeans(ctrl_tpm, na.rm = TRUE)
+  
+  subset_meta$ctrl_file_id <- NULL
+  subset_meta <- subset_meta[!duplicated(subset_meta), ]
+  
+  #pert_label (different pert experiment can have the same gene targets)
+  pert_label <- subset_meta$pert_exp_id[-1]
+  pert_label <- unlist(strsplit(pert_label, ""))
+  
+  #create name of experiment (gene target+pert_label)
+  vector_names <- c(vector_names, paste0(subset_meta$Target.gene.symbol,'.',subset_meta$pert_rep_num,':',paste(tail(pert_label, n=2), collapse="")))
+  
+  #for every perturbation experiment related to control sample
+  for (pert_exp in subset_meta$pert_file_id){
+    file_tpm <- final_table_tpm_perts[, pert_exp]
+    
+    #calculate logFC
+    logFC_pert <- log2((file_tpm+10e-6)/(ctrl_tpm+10e-6))
+    empty_vector <- c(empty_vector, logFC_pert)
+  }
+}
+
+#aggregate by gene name, sort and save as Y and P-matrices
+sorted_vector_names <- sort(vector_names)
+df_FC <- as.data.frame(matrix(empty_vector,nrow=length(final_table_tpm_perts$symbol),byrow=FALSE))
+colnames(df_FC) <- vector_names
+rownames(df_FC) <- final_table_tpm_perts$symbol
+ordered_df_FC <- df_FC[, sorted_vector_names]
+```
+
+```{r}
+vector_names_stripped = str_split_fixed(sorted_vector_names, ":", 2)[,1]
+names(ordered_df_FC) <- vector_names_stripped
+
+#ordered_df_FC_t <- t(ordered_df_FC)
+#ordered_df_FC <- by(df, INDICES=row.names(ordered_df_FC_t), FUN=colMeans)
+#ordered_df_FC <- as.data.frame(do.call(cbind,ordered_df_FC))
+
+vector_names_stripped = str_split_fixed(colnames(ordered_df_FC), "\\.", 2)[,1]
+
+getCount <- function(x) {
+  u <- unique(x);
+  data.frame(
+     value=u,
+     count=sapply(u, function(v) { length(which(x==v)) } )
+  )
+}
+
+find_single <- getCount(vector_names_stripped)
+singles <- subset(find_single, find_single$count==1)
+
+vector_to_drop <- vector()
+for (single in singles$value){
+  counter=0
+  print(single)
+  for(name in vector_names_stripped){
+    counter=counter+1
+    if (single==name){
+     vector_to_drop <- c(vector_to_drop, counter) 
+    }
+}
+}
+ordered_df_FC_cleaned <- ordered_df_FC#[-c(vector_to_drop)]
+vector_names_stripped = str_split_fixed(colnames(ordered_df_FC_cleaned), "\\.", 2)[,1]
+names(ordered_df_FC_cleaned) <- vector_names_stripped
+
+rows_to_drop <-  ordered_df_FC_cleaned[,colnames(ordered_df_FC_cleaned) %in% rownames(ordered_df_FC_cleaned) ]
+ordered_df_FC_cleaned_final <-  rows_to_drop[rownames(rows_to_drop) %in% colnames(rows_to_drop), ]
+
+ordered_df_FC_cleaned_final <- split.default(ordered_df_FC_cleaned_final, rep(1:2, each = 1))
+rep1 <- as.data.frame(ordered_df_FC_cleaned_final$`1`)
+rep2 <- as.data.frame(ordered_df_FC_cleaned_final$`2`)
+colnames(rep2) <- colnames(rep1)
+
+cols_to_drop <-  rep1[rownames(rep1) %in% colnames(rep1), ]
+rep1 <-  cols_to_drop[, colnames(cols_to_drop) %in% rownames(rows_to_drop)]
+cols_to_drop <-  rep2[rownames(rep1) %in% colnames(rep1), ]
+rep2 <-  cols_to_drop[, colnames(cols_to_drop) %in% rownames(rows_to_drop)]
+
+final_Y <- cbind(rep1, rep2) 
+final_P <- as.data.frame(cbind(diag(length(rep1))*(-1), diag(length(rep2))*(-1)))
+colnames(final_P) <- colnames(final_Y)
+rownames(final_P) <- rownames(final_Y)
+
+
+write.table(final_Y, file='/scratch/erikzhi/ENCODE_data/tables/ymatrix_hepg2.csv', quote=FALSE, sep='\t', col.names = TRUE, row.names = TRUE)
+write.table(final_P, file='/scratch/erikzhi/ENCODE_data/tables/pmatrix_hepg2.csv', quote=FALSE, sep='\t', col.names = TRUE, row.names = TRUE)
+```
