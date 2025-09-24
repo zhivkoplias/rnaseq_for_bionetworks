@@ -55,13 +55,15 @@ conda activate salmon_env
 This step identifies and filters the required experiment and control files from the ENCODE database.
 
 **Action**:
-First, download two file lists from the ENCODE project portal:
-1.  **Perturbation Experiments (shRNA RNA-seq, human)**
-    > `https://www.encodeproject.org/search/?type=Experiment&status=released&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&perturbed=true&biosample_ontology.term_name=K562&assay_title=shRNA+RNA-seq&limit=all`
-2.  **Control Experiments (shRNA RNA-seq, human, not perturbed)**
-    > `https://www.encodeproject.org/search/?type=Experiment&status=released&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&biosample_ontology.term_name=K562&assay_title=shRNA+RNA-seq&perturbed=false&limit=all`
 
-From the downloaded metadata, create two simple text files containing the download URLs of the `.bam` files: one for perturbations (`perturbations_raw.txt`) and one for controls (`controls_raw.txt`).
+For each cell line (K562 and HepG2), download two metadata lists from the ENCODE project portal:
+
+1.  **Perturbation Experiments (shRNA RNA-seq, human)**
+    > `https://www.encodeproject.org/search/?type=Experiment&status=released&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&perturbed=true&biosample_ontology.term_name=[cell_line_name]&assay_title=shRNA+RNA-seq&limit=all`
+2.  **Control Experiments (shRNA RNA-seq, human, not perturbed)**
+    > `https://www.encodeproject.org/search/?type=Experiment&status=released&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&biosample_ontology.term_name=[cell_line_name]&assay_title=shRNA+RNA-seq&perturbed=false&limit=all`
+
+Replace `[cell_line_name]` with `K562` or `HepG2`. From the downloaded metadata, create two simple text files containing the download URLs of the `.bam` files: one for perturbations (`perturbations_raw.txt`) and one for controls (`controls_raw.txt`).
 
 Next, run the `parseENCODE.py` script to filter these files based on specific criteria (assembly: GRCh38, output type: transcriptome alignments). This script also generates a mapping file between file IDs and experiment IDs.
 

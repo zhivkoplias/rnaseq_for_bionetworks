@@ -16,9 +16,9 @@ ctrl_files2exp <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_controls
 pert_files2exp <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_perturbations_files2experiments.csv", header = FALSE, sep=',')
 ctrl_meta <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_controls_meta.tsv", skip = 1, header = TRUE, sep='\t')
 pert_meta <- read.table("/scratch/erikzhi/ENCODE_data_HepG2/ENCODE_perturbations_meta.tsv", skip=1, header = TRUE, sep='\t')
-txdb_from_gff <-makeTxDbFromGFF("/scratch/erikzhi/ENCODE_data/ref/gencode.v36.annotation.gtf")
+txdb_from_gff <-makeTxDbFromGFF("/scratch/erikzhi/ENCODE_data/ref/gencode.v37.annotation.gtf")
 keys_txdb_from_gff <- keys(txdb_from_gff, keytype = "TXNAME")
-gencode_v36 <- select(txdb_from_gff, keys_txdb_from_gff, "GENEID", "TXNAME")
+gencode_v37 <- select(txdb_from_gff, keys_txdb_from_gff, "GENEID", "TXNAME")
 
 ```
 
@@ -89,8 +89,8 @@ handle_tpm_salmon_output <- function(path_to_salmon_output, files, gene_labels, 
 setwd("/scratch/erikzhi/ENCODE_data_HepG2")
 
 #aggregate TPMs from different experiments into one table
-final_table_tpm_ctrls <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/controls', unique(target_ctrl_files), target_genes, gencode_v36)
-final_table_tpm_perts <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/experiments', unique(target_pert_files), target_genes, gencode_v36)
+final_table_tpm_ctrls <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/controls', unique(target_ctrl_files), target_genes, gencode_v37)
+final_table_tpm_perts <- handle_tpm_salmon_output('/scratch/erikzhi/ENCODE_data_HepG2/salmon_output/experiments', unique(target_pert_files), target_genes, gencode_v37)
 
 
 ```
