@@ -13,24 +13,44 @@ The workflow is divided into three main stages:
 
 ## Prerequisites
 
-Before running the pipeline, ensure you have the following software installed:
+Before running the pipeline, ensure you have the following software installed. Instructions for creating a conda environment containing Salmon (1.4.0) and BEDTools (2.30.0) are provided below. R packages require manual installation (or can be installed via conda/bioconda if you prefer).
 
 *   **Python 3**: with `requests` library (`pip install requests`)
-*   **Salmon**: For transcript quantification.
-*   **BEDTools**: Specifically, the `bamToFastq` utility is required.
+*   **[Salmon (Patro et al., 2017):](https://pmc.ncbi.nlm.nih.gov/articles/PMC5600148/)**: For transcript quantification.
+*   **BEDTools**: Specifically, the `bamToFastq` utility is required. See the Bioconda package: https://anaconda.org/bioconda/bedtools 
 *   **R**: with the following libraries installed:
     *   `tximport`
     *   `dplyr`
     *   `stringr`
     *   `GenomicFeatures`
     *   `mygene`
-*   **A reference transcriptome index for Salmon**: The pipeline was run using an index built from **GRCh38** (Gencode release 37). You must build this yourself using the reference transcriptome.
+*   **A reference transcriptome index for Salmon**: The pipeline was run using an index built from **[GRCh38 (Gencode release 37)](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.26/)**. You must build this yourself using the reference transcriptome.
+
 
 ---
 
 ## Pipeline Steps
 
-### 1. Data Acquisition
+### 1. Download and install Conda
+
+Download and install the latest Anaconda or Miniconda for your operating system. The example for Linux is provided below:
+
+```bash
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/.bashrc
+```
+
+### 2. Set up environment
+
+Create and activate the conda environment for running Salmon (1.4.0) and the provided scripts. The environment YAML is located in the `envs` folder (`environment.yml`)
+
+```bash
+conda env create -n salmon_env -f envs/environment.yml
+conda activate salmon_env
+```
+
+### 3. Data Acquisition
 
 This step identifies and filters the required experiment and control files from the ENCODE database.
 
@@ -62,7 +82,7 @@ python parseENCODE.py \
 
 Finally, use the filtered lists (`ENCODE_perturbations_filtered.txt`, `ENCODE_controls_filtered.txt`) to download the required `.bam` files to a local directory. **Note**: The total data size is approximately 2.5 TB.
 
-### 2. Transcript Quantification
+### 4. Transcript Quantification
 
 This step runs Salmon to quantify transcript abundance from the downloaded `.bam` files.
 
@@ -91,7 +111,7 @@ rm ${FASTQ_PREFIX}1.fq ${FASTQ_PREFIX}2.fq
 **Usage**:
 You will need to modify `run_salmon_experiments.sh` to point to your file locations and specify your Salmon index. This is a computationally intensive step that will take several days to complete.
 
-### 3. Post-processing and Fold-Change Calculation
+### 5. Post-processing and Fold-Change Calculation
 
 This step processes the raw Salmon output (`quant.sf` files) into final log2FC matrices.
 
