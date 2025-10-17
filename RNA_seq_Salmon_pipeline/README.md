@@ -63,7 +63,7 @@ For each cell line (K562 and HepG2), download two metadata lists from the ENCODE
 2.  **Control Experiments (shRNA RNA-seq, human, not perturbed)**
     > `https://www.encodeproject.org/search/?type=Experiment&status=released&replicates.library.biosample.donor.organism.scientific_name=Homo+sapiens&biosample_ontology.term_name=[cell_line_name]&assay_title=shRNA+RNA-seq&perturbed=false&limit=all`
 
-Replace `[cell_line_name]` with `K562` or `HepG2`. From the downloaded metadata, create two simple text files containing the download URLs of the `.bam` files: one for perturbations (`perturbations_raw.txt`) and one for controls (`controls_raw.txt`).
+Replace `[cell_line_name]` with `K562` or `HepG2`. From the downloaded metadata, create two simple text files containing the names of `.bam` files: one for perturbations (`perturbations_raw.txt`) and one for controls (`controls_raw.txt`).
 
 Next, run the `parseENCODE.py` script to filter these files based on specific criteria (assembly: GRCh38, output type: transcriptome alignments). This script also generates a mapping file between file IDs and experiment IDs.
 
@@ -121,8 +121,8 @@ This step processes the raw Salmon output (`quant.sf` files) into final log2FC m
 The `run_salmon_counts_to_FC.Rmd` script performs the following key operations:
 1.  **Loads Data**: Reads the `files2experiments` mapping tables and experiment metadata.
 2.  **Imports Counts**: Uses `tximport` to load Salmon TPM values and aggregates them from the transcript level to the gene level.
-3.  **Calculates log2FC**: For each perturbation experiment, it identifies the corresponding control experiment, calculates the log2 fold-change `log2((TPM_perturbation + pseudo_count) / (TPM_control + pseudo_count))`, and handles replicates by averaging.
-4.  **Aggregates by Gene**: If multiple shRNA experiments target the same gene, their results are aggregated to create a final gene-by-gene matrix.
+3.  **Calculates log2FC**: For each perturbation experiment, it identifies the corresponding control experiment, calculates the log2 fold-change `log2((TPM_perturbation + pseudo_count) / (TPM_control + pseudo_count))`, and handles technical replicates by averaging.
+4.  **Aggregates by Gene**: If multiple shRNA experiments target the same gene, their results are aggregated to create a final gene-by-experiments matrix.
 5.  **Generates Matrices**: Produces the final output files.
 
 **Usage**:
